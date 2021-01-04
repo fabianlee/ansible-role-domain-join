@@ -1,0 +1,143 @@
+---
+
+- name: Install AD Domain packages
+  package:
+    name: 
+      - sssd
+      - sssd-ad
+      - sssd-tools
+      - realmd
+      - adcli
+      - krb5-user
+      - libnss-sss
+      - libpam-sss
+      - samba-common-bin
+    state: present
+    #update_cache: yes
+  tags: ad
+
+
+- name: install pip3
+  apt: name=python3-pip state=present
+- name: pexpect for creating kerberos ticket
+  pip:
+    name: pexpect
+
+- name: Discover realm
+  command: /bin/bash -c "/usr/sbin/realm discover {{ realm_domain_server }} -v"
+  register: realm_discover_results
+  tags: ad
+
+- name: Discover realm debug
+  debug: 
+    msg: "{{ realm_discover_results.stdout_lines }}"
+
+# fist method of checking if domain is already joined, adcli
+- name: AD Joined using adcli
+  command: adcli info {{ realm_domain }}
+  register: adcli_info_results
+  #ignore_errors: true
+  failed_when: "adcli_info_results.rc not in [0,1]"
+- name: AD joined using adcli debug
+  debug:
+    msg: "{{ adcli_info_results.rc }}"
+
+# second method of checking if domain is already joined, realm list
+- name: Checking to see if system is already joined to AD
+  command: /bin/bash -c "/usr/sbin/realm list"
+  register: realm_list_results
+  tags: ad
+- name: Debug realm_list_results
+  debug: 
+    msg: "{{ realm_list_results.stdout_lines }}"
+
+
+- name: Join system to AD
+  expect:
+    command: /bin/bash -c "/usr/sbin/realm join -v --user={{ kerberos_user }} {{ realm_domain }} --computer-ou='{{ realm_ad_ou }}' --install=/"
+    responses:
+      (?i)Password: "{{ kerberos_user_password }}"  
+  ignore_errors: yes
+  when: realm_list_results.stdout == ""
+  #when: adcli_info_results.rc == 0
+  become: true
+  tags: ad
+
+- name: home directory creation
+  command: pam-auth-update --enable mkhomedir
+
+# the skel and umask are already defaults, no need for this task
+# does '/usr/sbin/pam-auth-update' need to be run to take?
+#- name: configure pam homedir creation with skel and umask
+#  become: yes
+#  lineinfile:
+#    dest: /etc/pam.d/common-session
+#    regexp: "session\s+optional\s+pam_mkhomedir.so"
+#    line: "session\toptional\t\t\tpam_mkhomedir.so skel=/etc/skel/ umask=0022"
+
+
+- name: sssd disable FQDN in login 
+  replace:
+    path: /etc/sssd/sssd.conf
+    regexp: 'use_fully_qualified_names = True'
+    replace: 'use_fully_qualified_names = False'
+  notify: restart_sssd
+- name: sssd change home user directory
+  replace:
+    path: /etc/sssd/sssd.conf
+    regexp: 'fallback_homedir = \/home\/%u@%d'
+    replace: 'fallback_homedir = /home/%u'
+  notify: restart_sssd
+ 
+- name: sudoers AD group login
+  command: echo "/usr/sbin/realm permit -g {{item}}"
+  with_items: "{{sudoers_group_login}}"
+
+- name: add windows group Domain Admins to sudoers
+  become: yes
+  lineinfile:
+    dest: /etc/sudoers
+    line: '%domain\ admins   ALL=(ALL)       NOPASSWD: ALL'
+   
+- name: add AD groups to sudoers
+  become: yes
+  lineinfile:
+    dest: /etc/sudoers
+    line: '%{{item}}   ALL=(ALL)       NOPASSWD: ALL'
+  with_items: "{{ad_group_login}}"
+
+- name: deploy krb5.conf
+  template:
+    src: krb5.conf.j2
+    dest: /etc/krb5.conf
+    # krb5_child.log will have error with create_ccache permission denied
+    # if AD user cannot read file, hence need to have read for group+other
+    # also required, mode=1777 on /tmp and ownership by root.root
+    mode: 0644
+  become: yes
+  notify:
+    - restart_sssd
+
+- name: Create kerberos ticket
+  expect:
+    command: /bin/bash -c "/usr/bin/kinit -V {{kerberos_user}}@{{realm_domain}}"
+    responses:
+      (?i)Password: "{{ kerberos_user_password }}"
+  when: adcli_info_results.rc == 0
+  tags: ad
+- name: list kerberos tickets
+  command: klist
+  when: adcli_info_results.rc == 0
+
+- name: retrieve user information with id
+  command: id {{kerberos_user}}@{{realm_domain}}
+
+- name: retrieve user information with getent, requires krb5.conf
+  command: getent passwd {{kerberos_user}}@{{realm_domain}}
+
+
+
+#- name: system leaves AD
+#  command: /bin/bash -c "/usr/sbin/realm leave --user={{ kerberos_user }} {{ realm_domain }}"
+#  ignore_errors: yes
+#  become: true

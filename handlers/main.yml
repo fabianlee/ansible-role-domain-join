@@ -1,0 +1,12 @@
+---
+# handlers file for join_domain
+
+ - name: restart_realmd
+   service:
+     name: realmd
+     state: restarted
+ 
+ - name: restart_sssd
+   service:
+     name: sssd
+     state: restarted
