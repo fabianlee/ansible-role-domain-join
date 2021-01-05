@@ -2,10 +2,20 @@
 domains = {{ realm_domain }}
 config_file_version = 2
 services = nss, pam
+override_space = _
+
+[nss]
+debug = 9
+
+[pam]
+debug = 9
+pam_verbosity = 3
 
 [domain/{{ realm_domain }}]
+debug = 9
 ad_domain = {{ realm_domain }}
 krb5_realm = {{ krb5_default_realm }}
+krb5_server = {{realm_domain_server}}
 realmd_tags = manages-system joined-with-adcli
 cache_credentials = True
 id_provider = ad
@@ -15,12 +25,5 @@ ldap_id_mapping = True
 use_fully_qualified_names = False
 fallback_homedir = /home/%u
 access_provider = ad
+ldap_schema = AD
 
-auth_provider = ad
-chpass_provider = ad
-access_provider = ad
-ldap_schema = ad
-dyndns_update = true
-dyndns_refresh_interval = 43200
-dyndns_update_ptr = true
-dyndns_ttl = 3600

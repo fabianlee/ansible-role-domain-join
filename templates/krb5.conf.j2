@@ -3,7 +3,7 @@
 #######################################################
 
 [libdefaults]
-	default_realm = {{realm_domain | upper}}
+	default_realm = {{realm_domain}}
         # https://web.mit.edu/kerberos/krb5-1.5/krb5-1.5.4/doc/krb5-admin/libdefaults.html#libdefaults
 	#dns_lookup_kdc = true
 	#dns_lookup_realm = false
@@ -11,8 +11,12 @@
 # The following krb5.conf variables are only for MIT Kerberos.
 	kdc_timesync = 1
 	ccache_type = 4
+	renewable = true
 	forwardable = true
 	proxiable = true
+	clockskew = 300
+	rdns = false
+	canonicalize = true
 
 # The following encryption type specification will be used by MIT Kerberos
 # if uncommented.  In general, the defaults in the MIT Kerberos code are
@@ -32,22 +36,24 @@
 	fcc-mit-ticketflags = true
 
 [realms]
-        {{realm_domain | upper}} = {
-		kdc =  {{realm_domain_server}}
-		admin_server = {{realm_domain_server}}
+        {{realm_domain }} = {
+		kdc =  {{realm_domain_server | lower}}
+		admin_server = {{realm_domain_server | lower}}
 		default_domain = {{realm_domain | lower}}
 
         }
 
 [domain_realm]
-	{{realm_domain | lower}} = {{realm_domain | upper}}
-	.{{realm_domain | lower}} = {{realm_domain | upper}}
+	{{realm_domain | lower}} = {{realm_domain}}
+	.{{realm_domain | lower}} = {{realm_domain}}
 
 [capaths]
 
 [appdefaults]
 
 [logging]
+	default = FILE:/var/log/krblib.log
 	kdc = SYSLOG:INFO
-	admin_server = FILE=/var/log/kadm5.log
+	kdc = FILE:/var/log/kdc5.log
+	admin_server = FILE:/var/log/kadm5.log
 
