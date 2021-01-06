@@ -16,6 +16,8 @@
     #update_cache: yes
   tags: ad
 
+- name: show ansible_distribution values
+  debug: msg="{{ansible_distribution}};{{ansible_distribution_version}};{{ansible_distribution_major_version}}"
 
 - name: install pip3
   apt: name=python3-pip state=present
@@ -39,23 +41,19 @@
     state: restarted
   when: sshd_config_results.changed  
 
+# fist method of checking if domain already joined, marker file we created
+- name: domain joined marker file
+  stat:
+    path: /etc/sssd/{{realm_domain}}.joined
+  register: domain_joined_marker_file
+
 - name: Discover realm
   command: /bin/bash -c "/usr/sbin/realm discover {{ realm_domain_server }} -v"
   register: realm_discover_results
   tags: ad
-
 - name: Discover realm debug
   debug: 
     msg: "{{ realm_discover_results.stdout_lines }}"
-
-# fist method of checking if domain is already joined, adcli
-- name: AD Joined using adcli
-  command: adcli info {{ realm_domain }}
-  register: adcli_info_results
-  failed_when: "adcli_info_results.rc not in [0,1]"
-- name: AD joined using adcli debug
-  debug:
-    msg: "{{ adcli_info_results.rc }}"
 
 # second method of checking if domain is already joined, realm list
 - name: Checking to see if system is already joined to AD
@@ -73,18 +71,30 @@
     mode: 0600
   become: yes
 
+- name: debug realm join
+  debug: msg="{{domain_joined_marker_file.stat.exists}}"
+
 - name: Join system to AD
   expect:
     command: /bin/bash -c "/usr/sbin/realm join -v --user={{ kerberos_user }} {{ realm_domain }} --computer-ou='{{ realm_ad_ou }}' --install=/"
     responses:
       (?i)Password: "{{ kerberos_user_password }}"  
   ignore_errors: yes
-  when: realm_list_results.stdout == ""
-  #when: adcli_info_results.rc == 0
+  register: domain_join_results
+  when: realm_list_results.stdout == "" and not domain_joined_marker_file.stat.exists
   become: true
   tags: ad
 
-- name: home directory creation
+- name: create AD join marker file, because realm list will return empty if id_provider=ldap
+  copy:
+    dest: "/etc/sssd/{{realm_domain}}.joined"
+    content: '{{domain_join_results}}'
+    owner: root
+    group: root
+    mode: 664
+  when: domain_join_results.changed
+
+- name: enable home directory creation
   become: true
   # --force overwrites current PAM without question
   # --package would lower priority of manual prompt
@@ -118,11 +128,17 @@
     dest: /etc/krb5.conf
     # krb5_child.log will have error with create_ccache permission denied
     # if AD user cannot read file, hence need to have read for group+other
-    # also required, mode=1777 on /tmp and ownership by root.root
+    # also mode=1777 on /tmp and ownership by root.root
     mode: 0644
   become: yes
   notify:
     - restart_sssd
+
+
+- name: check if AD domain available
+  command: adcli info {{ realm_domain }}
+  register: adcli_info_results
+  failed_when: "adcli_info_results.rc not in [0,1]"
 
 - name: Create kerberos ticket
   expect:
