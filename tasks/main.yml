@@ -94,39 +94,23 @@
   template:
     src: sssd.conf.j2
     dest: /etc/sssd/sssd.conf
-    mode: 0644
+    # service will error if 644 
+    mode: 0600
   become: yes
+  register: sssd_config_changed
   notify: restart_sssd
 
-#- name: sssd disable FQDN in login 
-#  replace:
-#    path: /etc/sssd/sssd.conf
-#    regexp: 'use_fully_qualified_names = True'
-#    replace: 'use_fully_qualified_names = False'
-#  notify: restart_sssd
-#- name: sssd change home user directory
-#  replace:
-#    path: /etc/sssd/sssd.conf
-#    regexp: 'fallback_homedir = \/home\/%u@%d'
-#    replace: 'fallback_homedir = /home/%u'
-#  notify: restart_sssd
- 
-#- name: sudoers AD group login
-#  command: echo "/usr/sbin/realm permit -g {{item}}"
-#  with_items: "{{sudoers_group_login}}"
+# make sure sssd restart happens immediately if necessary (instead of by handler at end)
+- name: Flush handlers
+  meta: flush_handlers
 
-#- name: add windows group Domain Admins to sudoers
-#  become: yes
-#  lineinfile:
-#    dest: /etc/sudoers
-#    line: '%domain\ admins   ALL=(ALL)       NOPASSWD: ALL'
-   
 - name: add AD groups to sudoers
   become: yes
   lineinfile:
     dest: /etc/sudoers
     line: '%{{item}}   ALL=(ALL)       NOPASSWD: ALL'
   with_items: "{{sudoers_group_login}}"
+  when: sudoers_group_login is defined
 
 - name: deploy krb5.conf
   template:
@@ -153,9 +137,12 @@
 
 - name: retrieve user information with id
   command: id {{kerberos_user}}@{{realm_domain}}
+  register: id_result
   retries: 3
   delay: 30
-  until: result.rc == 0
+  until: id_result.rc == 0
+- name: show id result
+  debug: msg="{{id_result}}"
 
 - name: retrieve user information with getent, requires krb5.conf
   command: getent passwd {{kerberos_user}}@{{realm_domain}}

@@ -13,8 +13,9 @@ pam_verbosity = 3
 
 [domain/{{ realm_domain }}]
 debug = 9
+ad_server = {{realm_domain_server | lower}}
 ad_domain = {{ realm_domain }}
-krb5_realm = {{ krb5_default_realm }}
+krb5_realm = {{ realm_domain }}
 krb5_server = {{realm_domain_server}}
 realmd_tags = manages-system joined-with-adcli
 cache_credentials = True
@@ -26,4 +27,5 @@ use_fully_qualified_names = False
 fallback_homedir = /home/%u
 access_provider = ad
 ldap_schema = AD
+
 

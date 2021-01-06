@@ -16,7 +16,7 @@
 	proxiable = true
 	clockskew = 300
 	rdns = false
-	canonicalize = true
+	#canonicalize = false
 
 # The following encryption type specification will be used by MIT Kerberos
 # if uncommented.  In general, the defaults in the MIT Kerberos code are
@@ -53,7 +53,7 @@
 
 [logging]
 	default = FILE:/var/log/krblib.log
-	kdc = SYSLOG:INFO
+	#kdc = SYSLOG:INFO
 	kdc = FILE:/var/log/kdc5.log
 	admin_server = FILE:/var/log/kadm5.log
 
