@@ -79,7 +79,7 @@
     command: /bin/bash -c "/usr/sbin/realm join -v --user={{ kerberos_user }} {{ realm_domain }} --computer-ou='{{ realm_ad_ou }}' --install=/"
     responses:
       (?i)Password: "{{ kerberos_user_password }}"  
-  ignore_errors: yes
+  ignore_errors: no
   register: domain_join_results
   when: realm_list_results.stdout == "" and not domain_joined_marker_file.stat.exists
   become: true
@@ -92,7 +92,7 @@
     owner: root
     group: root
     mode: 664
-  when: domain_join_results.changed
+  when: domain_join_results.rc == 0 and domain_join_results.changed
 
 - name: enable home directory creation
   become: true
