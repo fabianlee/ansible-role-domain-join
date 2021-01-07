@@ -68,6 +68,7 @@
 - name: Checking to see if system is already joined to AD, kinit host
   command: /bin/bash -c "kinit -k host/$(hostname -f)"
   register: kinit_results
+  failed_when: not kinit_results in [0,1]
   tags: ad
 
 - name: deploy realmd.conf
