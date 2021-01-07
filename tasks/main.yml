@@ -64,11 +64,11 @@
   debug: 
     msg: "{{ realm_list_results.stdout_lines }}"
 
-# third method of checking if domain is already joined, kinit on host
+# third method of checking if domain is already joined
 - name: Checking to see if system is already joined to AD, kinit host
   command: /bin/bash -c "kinit -k host/$(hostname -f)"
   register: kinit_results
-  failed_when: not kinit_results in [0,1]
+  failed_when: not kinit_results.rc in [0,1]
   tags: ad
 
 - name: deploy realmd.conf
