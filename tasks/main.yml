@@ -56,13 +56,19 @@
     msg: "{{ realm_discover_results.stdout_lines }}"
 
 # second method of checking if domain is already joined, realm list
-- name: Checking to see if system is already joined to AD
+- name: Checking to see if system is already joined to AD, realm list
   command: /bin/bash -c "/usr/sbin/realm list"
   register: realm_list_results
   tags: ad
 - name: Debug realm_list_results
   debug: 
     msg: "{{ realm_list_results.stdout_lines }}"
+
+# third method of checking if domain is already joined, kinit on host
+- name: Checking to see if system is already joined to AD, kinit host
+  command: /bin/bash -c "kinit -k host/$(hostname -f)"
+  register: kinit_results
+  tags: ad
 
 - name: deploy realmd.conf
   template:
