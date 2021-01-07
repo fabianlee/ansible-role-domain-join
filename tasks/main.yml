@@ -87,7 +87,7 @@
       (?i)Password: "{{ kerberos_user_password }}"  
   ignore_errors: no
   register: domain_join_results
-  when: realm_list_results.stdout == "" and not domain_joined_marker_file.stat.exists
+  when: kinit_results.rc != 0 and not domain_joined_marker_file.stat.exists
   become: true
   tags: ad
 
