@@ -99,7 +99,7 @@
     owner: root
     group: root
     mode: 664
-  when: domain_join_results defined and domain_join_results.rc == 0 and domain_join_results.changed
+  when: domain_join_results is defined and domain_join_results.rc == 0 and domain_join_results.changed
 
 - name: enable home directory creation
   become: true
