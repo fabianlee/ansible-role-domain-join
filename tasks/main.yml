@@ -104,8 +104,8 @@
 - name: enable home directory creation
   become: true
   # --force overwrites current PAM without question
-  # --package would lower priority of manual prompt
-  command: pam-auth-update --enable mkhomedir --force
+  # --package would lower priority of manual prompt (--package required by xenial or you get prompt)
+  command: pam-auth-update --enable mkhomedir --force --package
 
 - name: deploy minimal sssd.conf
   template:
