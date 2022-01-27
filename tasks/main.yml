@@ -39,7 +39,12 @@
   service:
     name: ssh
     state: restarted
-  when: sshd_config_results.changed  
+  when: sshd_config_results.changed 
+
+- name: start realmd service
+  service:
+    name: realmd
+    state: start
 
 # fist method of checking if domain already joined, marker file we created
 - name: domain joined marker file
