@@ -48,17 +48,11 @@
   debug:
     var: ansible_facts.services["realmd.service"]
 
-- name: start realmd service
-  service:
-    name: realmd
+- name: enable and start realmd service
+  systemd:
+    enabled: yes
     state: started
-  when: ansible_facts.services["realmd.service"] stopped
-
-- name: enable realmd service
-  service:
     name: realmd
-    state: enabled
-  when: ansible_facts.services["realmd.service"] disabled
 
 # fist method of checking if domain already joined, marker file we created
 - name: domain joined marker file
