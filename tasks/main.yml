@@ -41,10 +41,18 @@
     state: restarted
   when: sshd_config_results.changed 
 
+- name: get realmd service facts
+  service_facts:
+
+- name: realmd service
+  debug:
+    var: ansible_facts.services["realmd.service"]
+
 - name: start realmd service
   service:
     name: realmd
-    state: start
+    state: started
+  when: ansible_facts.services["realmd.services"] 
 
 # fist method of checking if domain already joined, marker file we created
 - name: domain joined marker file
