@@ -39,7 +39,20 @@
   service:
     name: ssh
     state: restarted
-  when: sshd_config_results.changed  
+  when: sshd_config_results.changed 
+
+- name: get realmd service facts
+  service_facts:
+
+- name: realmd service
+  debug:
+    var: ansible_facts.services["realmd.service"]
+
+- name: enable and start realmd service
+  systemd:
+    enabled: yes
+    state: started
+    name: realmd
 
 # fist method of checking if domain already joined, marker file we created
 - name: domain joined marker file
